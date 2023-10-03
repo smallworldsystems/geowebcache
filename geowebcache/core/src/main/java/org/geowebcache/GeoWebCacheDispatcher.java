@@ -27,6 +27,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import org.geowebcache.authentication.AuthenticationFilter;
 import javax.servlet.ServletOutputStream;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -103,6 +104,8 @@ public class GeoWebCacheDispatcher extends AbstractController {
 
     private SecurityDispatcher securityDispatcher;
 
+    private AuthenticationFilter authFilter = null;
+
     /** Should be invoked through Spring */
     public GeoWebCacheDispatcher(
             TileLayerDispatcher tileLayerDispatcher,
@@ -135,6 +138,10 @@ public class GeoWebCacheDispatcher extends AbstractController {
         this.defaultStorageFinder = defaultStorageFinder;
     }
 
+    public void setAuthenticationFilter(AuthenticationFilter authFilter) {
+        this.authFilter = authFilter;
+    }
+    
     /**
      * GeoServer and other solutions that embedded this dispatcher will prepend a path, this is used
      * to remove it.
@@ -280,6 +287,13 @@ public class GeoWebCacheDispatcher extends AbstractController {
         }
 
         try {
+            if (authFilter != null) {
+                if (!authFilter.checkRequest(request)) {
+                    response.setStatus(401);
+                    response.getOutputStream().write("Authorization in GWC failed".getBytes());
+                    return null;
+                }
+            }
             if (requestComps == null || requestComps[0].equalsIgnoreCase(TYPE_HOME)) {
                 handleFrontPage(request, response);
             } else if (requestComps[0].equalsIgnoreCase(TYPE_SERVICE)) {
